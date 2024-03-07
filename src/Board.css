@@ -1,0 +1,35 @@
+.fourBoard {
+    display: grid;
+    grid-template-columns: repeat(7, 3vw);
+    width: 21vw;
+    height: 18vw;
+    margin: auto;
+    background: none;
+    margin-bottom: 2.5%;
+}
+  
+.circle {
+    width: 3vw;
+    height: 3vw;
+    overflow: auto;
+    border-radius: 50%;  
+}
+
+.winScreen {
+    background-color: white;
+    width: 9vw;
+    height: 3vw;
+    font-size: 2vw;
+    margin: auto;
+}
+.rowPick {
+    width: 3vw;
+    height: 3vw;
+    font-size: 1vw;
+}
+
+.playAgain {
+    width: 6vw;
+    height: 3vw;
+    font-size: 1vw;
+}
