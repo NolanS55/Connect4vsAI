@@ -28,12 +28,7 @@ class MCTS {
             let clonedState = this.game.deepClone();
             this.game.setBoardState(clonedState);
             let curNode = this.selectNode(root);
-
-            if (this.game.checkWin()){
-                if (this.game.getWinner() !== this.player && this.game.getWinner() !== 0){
-                    curNode.parent.wins = -1000
-                }
-            }
+            
             let expandedCurNode = this.expandNode(curNode);
             this.playOut();
             

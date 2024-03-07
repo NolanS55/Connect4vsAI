@@ -154,20 +154,20 @@ class connectFour {
         for(let i = 0; i < 6; i++) {
             if(this.checkHorz(this.boardState.board[i])) {
                 this.boardState.gameOver = true
-                this.boardState.winner  = this.boardState.tempPlay
+                this.boardState.winner  = this.boardState.player
                 return true
             }
         }
         if(this.checkVert(this.boardState.board)) {
             this.boardState.gameOver = true
-            this.boardState.winner  = this.boardState.tempPlay
+            this.boardState.winner  = this.boardState.player
             return true
         }
         for(let i = 0; i < 6; i++) {
             for(let j = 0; j < 7; j++) {
                 if(this.checkDiag(this.boardState.board,i,j)) {
                     this.boardState.gameOver = true
-                    this.boardState.winner  = this.boardState.tempPlay
+                    this.boardState.winner  = this.boardState.player
                     return true
                 }
             }
@@ -191,7 +191,7 @@ class connectFour {
     }
 }
 var connectGame = new connectFour()
-var Player2 = new MCTS(connectGame, 2, 1000, 2)
+var Player2 = new MCTS(connectGame, 2, 100, 1.41)
 const Board = () => {
     
     const [board, setBoard] = useState([[0,0,0,0,0,0,0],
@@ -204,9 +204,11 @@ const Board = () => {
     const reactMove = (move) => {
         connectGame.move(move)
         setBoard(connectGame.boardState.board)
-        let p2Move = Player2.selectMove()
-        connectGame.move(p2Move)
-        setBoard(connectGame.boardState.board)
+        if(!connectGame.checkWin()) {
+            let p2Move = Player2.selectMove()
+            connectGame.move(p2Move)
+            setBoard(connectGame.boardState.board)
+        }
     }
 
     const reactReset = () => {
