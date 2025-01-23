@@ -1,160 +1,124 @@
-class treeNode {
-    constructor(moves, parent) {
-        this.parent = parent;
-        this.visits = 0;
-        this.wins = 0;
-        this.unExpanMoves = moves.length;
-        this.children = new Array(this.unExpanMoves).fill(null);
+class MCTSNode {
+    constructor(boardState, parent = null, move = null) {
+        this.boardState = boardState; // ConnectFour board state
+        this.parent = parent;         // Parent node
+        this.move = move;             // Move that leads to this node
+        this.children = [];           // List of child nodes
+        this.wins = 0;                // Number of wins for Player 2
+        this.visits = 0;              // Number of times this node has been visited
+        this.untriedMoves = this.getAvailableMoves(boardState); // Possible moves
+    }
+
+    // Get available moves from the current board state
+    getAvailableMoves(boardState) {
+        const moves = [];
+        for (let col = 0; col < 7; col++) {
+            if (boardState[0][col] === 0) {
+                moves.push(col);
+            }
+        }
+        return moves;
+    }
+
+    // Check if the node is a leaf (no untried moves and game not over)
+    isLeaf() {
+        return this.untriedMoves.length === 0 && !this.boardState.gameOver;
+    }
+
+    // Expand the node by trying one of the untried moves
+    expand() {
+        if (this.isLeaf()) return null;
+
+        // Pick a random move to expand
+        const move = this.untriedMoves.pop();
+        const newBoardState = this.simulateMove(this.boardState, move);
+        const childNode = new MCTSNode(newBoardState, this, move);
+        this.children.push(childNode);
+        return childNode;
+    }
+
+    // Simulate a move on the board state
+    simulateMove(boardState, move) {
+        const newBoardState = structuredClone(boardState);
+        newBoardState.board[5][move] = 2; // Assume Player 2 is AI and uses 2
+        // Adjust the board state after the move (may include checking for win)
+        return newBoardState;
     }
 }
 
 class MCTS {
-    constructor(game, player, iterations, explore) {
-        this.game = game;
-        this.player = player;
-        this.iterations = iterations;
-        this.explore = explore;
+    constructor(game, player, iterations, explorationConstant) {
+        this.game = game;            // Game instance
+        this.player = player;        // Player (in this case, Player 2)
+        this.iterations = iterations;  // Number of MCTS iterations to run
+        this.explorationConstant = explorationConstant;  // UCB1 exploration constant
     }
 
-    selectMove() {
-        const startState = this.game.getBoardState();
-        const startingBoard = structuredClone(this.game.getBoardState().board);
-        const moves = this.game.getMoves();
-        const root = new treeNode(moves, null);
-
-        for (let i = 0; i < this.iterations; i++) {
-            this.game.setBoardState(startState);
-            let clonedState = this.game.deepClone();
-            this.game.setBoardState(clonedState);
-            let curNode = this.selectNode(root);
-
-            let expandedCurNode = this.expandNode(curNode);
-            this.playOut();
-
-            let reward = 0;
-            if (this.game.getWinner() === 0) {
-                reward = 0;
-            } else if (this.game.getWinner() === this.player) {
-                reward = 1;
-            } else {
-                reward = -1;
-            }
-            this.backPropagate(expandedCurNode, reward);
+    // UCB1 selection: picks the child node with the highest UCB1 value
+    ucb1(node) {
+        if (node.visits === 0) {
+            return Infinity; // If unvisited, give it infinite priority
         }
-
-        // Pick the child with the maximum wins
-        let maxWins = 0;
-        let maxIndex = 0;
-        for (let i in root.children) {
-            const child = root.children[i];
-            if (child == null) continue;
-            if (child.wins > maxWins) {
-                maxWins = child.wins;
-                maxIndex = i;
-            }
-        }
-
-        this.game.setBoardState(startState);
-        this.game.setBoard(startingBoard);
-        return moves[maxIndex]; // Return the selected move
+        return node.wins / node.visits + this.explorationConstant * Math.sqrt(Math.log(node.parent.visits) / node.visits);
     }
 
+    // Selection step of MCTS: Selects the most promising node
     selectNode(root) {
-        const c = this.explore;
-        while (root.unExpanMoves === 0) {
-            let maxUBC = -10000;
-            let maxIndex = -1;
-            let sp = root.visits;
-            for (let i in root.children) {
-                const child = root.children[i];
-                const si = child.visits;
-                const wi = child.wins;
-                const ubc = this.UCB(wi, si, c, sp);
-                if (ubc > maxUBC) {
-                    maxUBC = ubc;
-                    maxIndex = i;
-                }
-            }
-            const moves = this.game.getMoves();
-            this.game.move(moves[maxIndex]);
-
-            root = root.children[maxIndex];
-            if (this.game.checkWin()) {
-                return root;
-            }
+        let currentNode = root;
+        while (currentNode.untriedMoves.length === 0 && currentNode.children.length > 0) {
+            currentNode = this.bestChild(currentNode);
         }
-        return root;
+        return currentNode;
     }
 
-    expandNode(node) {
-        if (this.game.checkWin()) {
-            return node;
-        }
-        let moves = this.game.getMoves();
-        const blockMove = this.checkBlock(node);
-        const index = blockMove !== -1 ? blockMove : this.selectUnexpanChild(node);
-
-        this.game.move(moves[index]);
-
-        moves = this.game.getMoves();
-        const newNode = new treeNode(moves, node);
-        node.children[index] = newNode;
-        node.unExpanMoves -= 1;
-
-        return newNode;
+    // Find the child node with the highest UCB1 value
+    bestChild(node) {
+        return node.children.reduce((best, child) => {
+            return this.ucb1(child) > this.ucb1(best) ? child : best;
+        });
     }
 
-    playOut() {
+    // Simulation step: Simulate a random game from the current node to a terminal state
+    simulateGame(node) {
+        let boardState = node.boardState;
+        let currentPlayer = 2; // Player 2 (AI)
+
         while (!this.game.checkWin()) {
-            const moves = this.game.getMoves();
-            const randomChoice = Math.floor(Math.random() * moves.length);
-            this.game.move(moves[randomChoice]);
+            let availableMoves = this.game.getMoves();
+            let randomMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+            boardState = this.game.simulateMove(boardState, randomMove);
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
         }
-        return this.game.getWinner();
+
+        return this.game.getWinner();  // Return the winner (1 or 2)
     }
 
-    backPropagate(node, reward) {
-        while (node !== null) {
-            node.visits += 1;
-            node.wins += reward;
-            node = node.parent;
-        }
-    }
-
-    selectUnexpanChild(node) {
-        const choice = Math.floor(Math.random() * node.unExpanMoves);
-        let counter = -1;
-        for (let i in node.children) {
-            const child = node.children[i];
-            if (child == null) {
-                counter += 1;
+    // Backpropagation step: Update the stats of each node along the path to the root
+    backpropagate(node, result) {
+        let currentNode = node;
+        while (currentNode !== null) {
+            currentNode.visits++;
+            if (result === this.player) {
+                currentNode.wins++;
             }
-            if (counter === choice) {
-                return i;
-            }
+            currentNode = currentNode.parent;
         }
     }
 
-    // Calculates the Upper Confidence Bound (UCB)
-    UCB(wi, si, c, sp) {
-        return (wi / si) + c * Math.sqrt(Math.log(sp) / si);
-    }
-
-    // Check for a move that blocks the opponent from winning
-    checkBlock(node) {
-        const moves = this.game.getMoves();
-        for (let i = 0; i < moves.length; i++) {
-            const move = moves[i];
-            this.game.move(move);
-            if (this.game.checkWin()) {
-                this.game.undoMove(move);  // Undo move after checking
-                return i; // Return the index of the blocking move
-            }
-            this.game.undoMove(move);  // Undo move
+    // The main function that runs the MCTS to find the best move
+    selectMove() {
+        const rootNode = new MCTSNode(this.game.getBoardState(), null, null);
+        
+        // Perform MCTS iterations
+        for (let i = 0; i < this.iterations; i++) {
+            let node = this.selectNode(rootNode);  // Selection
+            let expandedNode = node.expand();      // Expansion
+            let simulationResult = this.simulateGame(expandedNode || node);  // Simulation
+            this.backpropagate(expandedNode || node, simulationResult);  // Backpropagation
         }
-        return -1; // Return -1 if no block move is found
+
+        // Pick the child with the highest win rate after all iterations
+        const bestMoveNode = this.bestChild(rootNode);
+        return bestMoveNode.move;
     }
 }
-
-exports.MCTS = MCTS;
-Object.defineProperty(exports, '__esModule', { value: true });
