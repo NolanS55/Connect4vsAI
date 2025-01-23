@@ -258,7 +258,7 @@ const Board = () => {
                     }
                 </div>
                 <div className="controller">
-                    <div className="winScreen">{(connectGame.getBoardState().player === 1) ? "Blue" : "Red"} wins</div>
+                    <div className="winScreen">{(connectGame.getBoardState().player === 1) ? "Red" : "Blue"} wins</div>
                     <button className="playAgain" onClick={reactReset}>Play Again</button>
                 </div>
             </div> 
