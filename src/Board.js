@@ -200,7 +200,7 @@ class connectFour {
     }
 }
 var connectGame = new connectFour()
-var Player2 = new MCTS(connectGame, 2, 100, 1.41)
+var Player2 = new MCTS(connectGame, 2, 1000, 1.41)
 const Board = () => {
     
     const [board, setBoard] = useState([[0,0,0,0,0,0,0],
@@ -211,14 +211,15 @@ const Board = () => {
                                         [0,0,0,0,0,0,0]])
     
     const reactMove = (move) => {
-        connectGame.move(move)
-        setBoard(connectGame.boardState.board)
-        if(!connectGame.checkWin()) {
-            let p2Move = Player2.selectMove()
-            connectGame.move(p2Move)
-            setBoard(connectGame.boardState.board)
+        connectGame.move(move);
+        setBoard(connectGame.boardState.board);
+        if (!connectGame.checkWin()) {
+            // AI makes its move after Player 1
+            let p2Move = Player2.selectMove();
+            connectGame.move(p2Move);
+            setBoard(connectGame.boardState.board);
         }
-    }
+    };
 
     const reactReset = () => {
         setBoard([[0,0,0,0,0,0,0],
